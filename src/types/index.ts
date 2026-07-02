@@ -17,6 +17,7 @@ export interface Settings {
   default_currency: Currency;
   invoice_prefix: string;          // e.g. "INV"
   payment_notes: string;
+  qris_string: string | null;     // string QRIS statis dari rekening
   created_at: string;
   updated_at: string;
 }

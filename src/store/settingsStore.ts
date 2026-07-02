@@ -15,6 +15,7 @@ const DEFAULT_SETTINGS: Settings = {
   default_currency: 'IDR',
   invoice_prefix: 'INV',
   payment_notes: 'Pembayaran dapat ditransfer ke rekening:\nBank BCA: 1234-5678-90\na.n. Nama Bisnis Kamu',
+  qris_string: null,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 };

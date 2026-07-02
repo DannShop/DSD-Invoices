@@ -1,4 +1,4 @@
-# 💼 DSD-Invoices
+# 💼 WildanInvoice
 
 Invoice generator personal — offline-first, ringan di RAM 4GB, bisa cloud sync ke Supabase.
 
@@ -116,4 +116,3 @@ src/
 ---
 
 Dibuat dengan ❤️ + Claude AI
-# DSD-Invoices

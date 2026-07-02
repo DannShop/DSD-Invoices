@@ -53,6 +53,7 @@ export const settingsSchema = z.object({
   default_currency: z.enum(['IDR', 'USD', 'EUR', 'SGD']).default('IDR'),
   invoice_prefix: z.string().min(1).default('INV'),
   payment_notes: z.string().default(''),
+  qris_string: z.string().nullable().default(null),
 });
 
 // ─── ITEM CATALOG SCHEMA ──────────────────────────────────────────────────────

@@ -26,6 +26,7 @@ export async function migrateLocalToSupabase(): Promise<SyncResult> {
     const invoices = storageGet<Invoice[]>(STORAGE_KEYS.INVOICES, []);
 
     let counts = { settings: 0, clients: 0, items: 0, invoices: 0 };
+    const errorMessages: string[] = [];
 
     // ── Settings ──
     if (settings) {
@@ -41,7 +42,12 @@ export async function migrateLocalToSupabase(): Promise<SyncResult> {
         invoice_prefix:   settings.invoice_prefix,
         payment_notes:    settings.payment_notes,
       });
-      if (!error) counts.settings = 1;
+      if (!error) {
+        counts.settings = 1;
+      } else {
+        console.error('[Sync] settings error:', error);
+        errorMessages.push(`Settings: ${error.message}`);
+      }
     }
 
     // ── Clients ──
@@ -52,7 +58,12 @@ export async function migrateLocalToSupabase(): Promise<SyncResult> {
           address: c.address, company: c.company, notes: c.notes,
         }))
       );
-      if (!error) counts.clients = clients.length;
+      if (!error) {
+        counts.clients = clients.length;
+      } else {
+        console.error('[Sync] clients error:', error);
+        errorMessages.push(`Klien: ${error.message}`);
+      }
     }
 
     // ── Item Catalog ──
@@ -63,7 +74,12 @@ export async function migrateLocalToSupabase(): Promise<SyncResult> {
           default_price: i.default_price, unit: i.unit, category: i.category,
         }))
       );
-      if (!error) counts.items = items.length;
+      if (!error) {
+        counts.items = items.length;
+      } else {
+        console.error('[Sync] item_catalog error:', error);
+        errorMessages.push(`Item: ${error.message}`);
+      }
     }
 
     // ── Invoices + Line Items ──
@@ -78,8 +94,14 @@ export async function migrateLocalToSupabase(): Promise<SyncResult> {
         currency: inv.currency, notes: inv.notes,
       });
 
-      if (!invErr && inv.line_items.length > 0) {
-        await supabase.from('invoice_line_items').upsert(
+      if (invErr) {
+        console.error('[Sync] invoice error:', inv.invoice_number, invErr);
+        errorMessages.push(`Invoice ${inv.invoice_number}: ${invErr.message}`);
+        continue;
+      }
+
+      if (inv.line_items.length > 0) {
+        const { error: liErr } = await supabase.from('invoice_line_items').upsert(
           inv.line_items.map((li) => ({
             id: li.id, invoice_id: inv.id,
             catalog_item_id: li.catalog_item_id,
@@ -88,16 +110,28 @@ export async function migrateLocalToSupabase(): Promise<SyncResult> {
             line_total: li.line_total, sort_order: li.sort_order,
           }))
         );
-        counts.invoices++;
+        if (liErr) {
+          console.error('[Sync] line_items error:', inv.invoice_number, liErr);
+          errorMessages.push(`Item invoice ${inv.invoice_number}: ${liErr.message}`);
+        }
       }
+      counts.invoices++;
     }
 
+    const hasErrors = errorMessages.length > 0;
+    const allFailed  = counts.settings === 0 && counts.clients === 0 && counts.items === 0 && counts.invoices === 0 && hasErrors;
+
     return {
-      success: true,
-      message: `Migrasi berhasil! ${counts.clients} klien, ${counts.items} item, ${counts.invoices} invoice tersinkron ke Supabase.`,
+      success: !allFailed,
+      message: allFailed
+        ? `Gagal sync — ${errorMessages[0]}`
+        : hasErrors
+          ? `Sebagian berhasil: ${counts.clients} klien, ${counts.items} item, ${counts.invoices} invoice. Ada ${errorMessages.length} error — cek Console (F12) untuk detail.`
+          : `Migrasi berhasil! ${counts.clients} klien, ${counts.items} item, ${counts.invoices} invoice tersinkron ke Supabase.`,
       counts,
     };
   } catch (err) {
+    console.error('[Sync] fatal error:', err);
     return { success: false, message: `Error: ${String(err)}` };
   }
 }

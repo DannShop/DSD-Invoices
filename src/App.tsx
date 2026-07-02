@@ -29,24 +29,26 @@ export default function App() {
 
   function renderPage() {
     switch (page.name) {
-      case 'dashboard':    return <Dashboard navigate={navigate} />;
-      case 'create':       return <CreateInvoice navigate={navigate} onSuccess={(id) => navigate({ name: 'detail', invoiceId: id })} />;
-      case 'detail':       return <InvoiceDetail invoiceId={page.invoiceId} navigate={navigate} />;
-      case 'history':      return <HistoryPage navigate={navigate} clientId={page.clientId} />;
-      case 'clients':      return <ClientsPage navigate={navigate} />;
-      case 'catalog':      return <ItemCatalogPage navigate={navigate} />;
-      case 'recurring':    return <RecurringPage navigate={navigate} />;
+      case 'dashboard':     return <Dashboard navigate={navigate} />;
+      case 'create':        return <CreateInvoice navigate={navigate} onSuccess={(id) => navigate({ name: 'detail', invoiceId: id })} />;
+      case 'detail':        return <InvoiceDetail invoiceId={page.invoiceId} navigate={navigate} />;
+      case 'history':       return <HistoryPage navigate={navigate} clientId={page.clientId} />;
+      case 'clients':       return <ClientsPage navigate={navigate} />;
+      case 'catalog':       return <ItemCatalogPage navigate={navigate} />;
+      case 'recurring':     return <RecurringPage navigate={navigate} />;
       case 'import-export': return <ImportExportPage navigate={navigate} />;
-      case 'cloud-sync':   return <CloudSyncPage navigate={navigate} />;
-      case 'settings':     return <Settings navigate={navigate} />;
-      default:             return <Dashboard navigate={navigate} />;
+      case 'cloud-sync':    return <CloudSyncPage navigate={navigate} />;
+      case 'settings':      return <Settings navigate={navigate} />;
+      default:              return <Dashboard navigate={navigate} />;
     }
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-apple overflow-hidden">
       <Sidebar currentPage={page.name} navigate={navigate} />
-      <main className="flex-1 overflow-y-auto">{renderPage()}</main>
+      <main className="flex-1 overflow-y-auto main-scroll">
+        {renderPage()}
+      </main>
     </div>
   );
 }
