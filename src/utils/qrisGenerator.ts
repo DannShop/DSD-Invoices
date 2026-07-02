@@ -30,8 +30,12 @@ function convertCRC16(str: string): string {
  * Logika sama persis kayak generateQRIS() di DannShop
  */
 export function injectNominalQRIS(qrisStatis: string, nominal: number): string {
-  // Bersihkan whitespace
-  const qrisData = qrisStatis.trim().replace(/\s/g, '');
+  // PENTING: hanya trim spasi di AWAL/AKHIR string, JANGAN hapus semua
+  // whitespace — karena field seperti "59" (Merchant Name) bisa berisi
+  // spasi di dalamnya (contoh: "DANNSHOP DIGITAL PAYMENT"). Menghapus
+  // semua whitespace akan mengubah panjang value field tsb dan merusak
+  // parsing TLV setelahnya, sehingga QR jadi tidak valid saat discan.
+  const qrisData = qrisStatis.trim();
 
   // Step 1: Hapus 4 char CRC di akhir
   const withoutCRC = qrisData.slice(0, -4);
@@ -90,7 +94,7 @@ export async function generateInvoiceQRIS(
  */
 export function isValidQRIS(str: string): boolean {
   if (!str) return false;
-  const cleaned = str.trim().replace(/\s/g, '');
+  const cleaned = str.trim();
   return (
     cleaned.startsWith('000201') &&
     cleaned.length > 50 &&
