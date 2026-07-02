@@ -33,3 +33,9 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Backup folders dari update.sh
+.backup-*/
+
+# ZIP update files
+*.zip
