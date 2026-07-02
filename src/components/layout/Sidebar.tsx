@@ -46,7 +46,7 @@ export default function Sidebar({ currentPage, navigate }: SidebarProps) {
             <i className="fa-solid fa-file-invoice text-white text-sm" />
           </div>
           <div>
-            <h1 className="text-white font-bold text-sm tracking-tight leading-none">WildanInvoice</h1>
+            <h1 className="text-white font-bold text-sm tracking-tight leading-none">DSD-Invoices</h1>
             <p className="text-white/30 text-[10px] mt-0.5 leading-none">Invoice Generator</p>
           </div>
         </div>

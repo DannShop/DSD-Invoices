@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════
--- WildanInvoice — Fix RLS Policy (Personal Use, No Auth)
+-- DSD-Invoices — Fix RLS Policy (Personal Use, No Auth)
 -- Jalankan ini di SQL Editor kalau Push masih gagal/0 data
 -- ═══════════════════════════════════════════════════════════
 

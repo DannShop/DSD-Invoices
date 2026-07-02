@@ -35,7 +35,7 @@ function generateInvoiceEmailHTML(invoice: Invoice, settings: Settings): string 
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div>
           <h1 style="color:#ffffff;font-size:22px;font-weight:800;margin:0;letter-spacing:-0.5px">
-            ${settings.business_name || 'WildanInvoice'}
+            ${settings.business_name || 'DSD-Invoices'}
           </h1>
           ${settings.business_email ? `<p style="color:rgba(255,255,255,0.5);font-size:12px;margin:4px 0 0">${settings.business_email}</p>` : ''}
           ${settings.business_phone ? `<p style="color:rgba(255,255,255,0.5);font-size:12px;margin:2px 0 0">${settings.business_phone}</p>` : ''}
@@ -192,9 +192,9 @@ export async function sendInvoiceEmail(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: `${settings.business_name || 'WildanInvoice'} <${fromEmail}>`,
+        from: `${settings.business_name || 'DSD-Invoices'} <${fromEmail}>`,
         to:   [toEmail],
-        subject: `Invoice ${invoice.invoice_number} dari ${settings.business_name || 'WildanInvoice'}`,
+        subject: `Invoice ${invoice.invoice_number} dari ${settings.business_name || 'DSD-InvoicesInvoice'}`,
         html,
       }),
     });

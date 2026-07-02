@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════
--- WildanInvoice — Supabase Schema Migration
+-- DSD-Invoices — Supabase Schema Migration
 -- Paste & run di: Supabase Dashboard → SQL Editor
 -- ═══════════════════════════════════════════════════════════
 

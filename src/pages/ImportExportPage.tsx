@@ -97,19 +97,19 @@ export default function ImportExportPage({ navigate }: ImportExportPageProps) {
       inv.status,
       inv.currency,
     ]);
-    exportToCSV(headers, rows, `WildanInvoice_Export_${new Date().toISOString().split('T')[0]}.csv`);
+    exportToCSV(headers, rows, `DSD-Invoices_Export_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
   const exportClientsCSV = () => {
     const headers = ['Nama','Email','Telepon','Alamat','Perusahaan','Catatan'];
     const rows = clients.map((c) => [c.name, c.email, c.phone, c.address, c.company, c.notes]);
-    exportToCSV(headers, rows, `WildanInvoice_Clients_${new Date().toISOString().split('T')[0]}.csv`);
+    exportToCSV(headers, rows, `DSD-Invoices_Clients_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
   const exportItemsCSV = () => {
     const headers = ['Nama Item','Deskripsi','Harga Default','Satuan','Kategori'];
     const rows = items.map((i) => [i.name, i.description, String(i.default_price), i.unit, i.category]);
-    exportToCSV(headers, rows, `WildanInvoice_Items_${new Date().toISOString().split('T')[0]}.csv`);
+    exportToCSV(headers, rows, `DSD-Invoices_Items_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
   const exportTemplateSampleCSV = (type: ImportType) => {

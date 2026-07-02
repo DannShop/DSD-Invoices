@@ -81,7 +81,7 @@ export function generateSimplePDF(invoice: Invoice, settings: Settings): void {
   pdf.setTextColor(255, 255, 255);
   pdf.setFontSize(18);
   pdf.setFont('helvetica', 'bold');
-  pdf.text(settings.business_name || 'WildanInvoice', margin, 15);
+  pdf.text(settings.business_name || 'DSD-Invoices', margin, 15);
   pdf.setFontSize(9);
   pdf.setFont('helvetica', 'normal');
   pdf.text('INVOICE', pageW - margin - 20, 15);
