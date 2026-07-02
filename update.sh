@@ -1,3 +1,161 @@
+#!/bin/bash
+
+# ═══════════════════════════════════════════════════════════════
+# WildanInvoice — Patch: Setup Resend via Supabase Edge Function
+# ═══════════════════════════════════════════════════════════════
+#
+# LATAR BELAKANG:
+# Browser tidak bisa memanggil api.resend.com langsung (diblokir
+# CORS oleh Resend — ini normal untuk SEMUA provider email API,
+# bukan cuma Resend). Solusinya: browser memanggil Supabase Edge
+# Function (yang boleh dipanggil dari browser), lalu Edge Function
+# itu yang memanggil Resend dari sisi server.
+#
+#   Browser → Supabase Edge Function → Resend API → Email terkirim
+#
+# CARA PAKAI SCRIPT INI:
+# 1. Copy file ini ke ROOT folder project (sejajar package.json)
+# 2. Jalankan: bash setup-resend-edge-function-patch.sh
+# 3. Ikuti langkah DEPLOY MANUAL di akhir output script ini
+#    (deploy Edge Function via Supabase Dashboard, tidak perlu CLI)
+# 4. Restart dev server: npm run dev
+#
+# FILE YANG DIBUAT/DIUBAH:
+# - supabase/functions/send-invoice-email/index.ts  (BARU)
+# - src/utils/emailService.ts                        (rewrite penuh)
+# - src/pages/InvoiceDetail.tsx                       (patch teks notice)
+# ═══════════════════════════════════════════════════════════════
+
+set -e
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+echo -e "${BLUE}═══════════════════════════════════════════════${NC}"
+echo -e "${BLUE}  Patch: Resend via Supabase Edge Function${NC}"
+echo -e "${BLUE}═══════════════════════════════════════════════${NC}"
+echo ""
+
+if [ ! -f "package.json" ]; then
+  echo -e "${RED}❌ package.json tidak ditemukan.${NC}"
+  echo -e "${YELLOW}   Jalankan script ini dari ROOT folder project.${NC}"
+  exit 1
+fi
+
+EMAIL_SERVICE="src/utils/emailService.ts"
+INVOICE_DETAIL="src/pages/InvoiceDetail.tsx"
+EDGE_FN_DIR="supabase/functions/send-invoice-email"
+EDGE_FN_FILE="${EDGE_FN_DIR}/index.ts"
+
+mkdir -p "$EDGE_FN_DIR"
+
+for f in "$EMAIL_SERVICE" "$INVOICE_DETAIL"; do
+  if [ -f "$f" ]; then
+    cp "$f" "${f}.bak"
+  fi
+done
+echo -e "${YELLOW}📦 Backup dibuat (.bak) untuk file yang ada${NC}"
+echo ""
+
+# ── 1. Buat Edge Function ──
+cat > "$EDGE_FN_FILE" << 'FILE_EOF'
+// ═══════════════════════════════════════════════════════════════
+// Supabase Edge Function: send-invoice-email
+// ─────────────────────────────────────────────────────────────
+// Fungsi ini jadi "perantara" antara browser dan Resend API.
+// Browser TIDAK BISA manggil api.resend.com langsung (CORS block),
+// jadi browser manggil Edge Function ini (yang boleh dipanggil dari
+// browser), lalu Edge Function ini yang manggil Resend dari sisi
+// server (Deno runtime, bukan browser — jadi CORS tidak berlaku).
+//
+// CARA DEPLOY (via Dashboard, tanpa install apapun):
+// 1. Buka dashboard.supabase.com → project kamu
+// 2. Sidebar kiri → Edge Functions → Deploy a new function
+// 3. Pilih "Via Editor" (bukan AI Assistant)
+// 4. Nama function: send-invoice-email
+// 5. Hapus semua kode default, paste seluruh isi file ini
+// 6. Klik Deploy
+// 7. Setelah deploy, buka tab "Secrets" di Edge Functions
+//    → tambahkan secret: RESEND_API_KEY = re_xxxxxxxxx (API key Resend kamu)
+// ═══════════════════════════════════════════════════════════════
+
+// @ts-ignore - Deno import, valid di runtime Supabase Edge Functions
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    const { to, toName, subject, html, fromEmail, fromName } = await req.json();
+
+    if (!to || !subject || !html) {
+      return new Response(
+        JSON.stringify({ error: "Field 'to', 'subject', dan 'html' wajib diisi" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // @ts-ignore - Deno global, valid di runtime Supabase
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+
+    if (!RESEND_API_KEY) {
+      return new Response(
+        JSON.stringify({ error: "RESEND_API_KEY belum di-set di Supabase Secrets" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const resendRes = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: `${fromName || "WildanInvoice"} <${fromEmail || "onboarding@resend.dev"}>`,
+        to: [to],
+        subject,
+        html,
+      }),
+    });
+
+    const resendData = await resendRes.json();
+
+    if (!resendRes.ok) {
+      return new Response(
+        JSON.stringify({ error: resendData.message || "Gagal kirim email via Resend", detail: resendData }),
+        { status: resendRes.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ success: true, id: resendData.id }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+
+  } catch (err) {
+    return new Response(
+      JSON.stringify({ error: String(err) }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
+FILE_EOF
+
+echo -e "${GREEN}✅ ${EDGE_FN_FILE} dibuat${NC}"
+
+# ── 2. Rewrite emailService.ts ──
+cat > "$EMAIL_SERVICE" << 'FILE_EOF'
 import type { Invoice, Settings } from '../types';
 import { formatCurrency, formatDate } from './format';
 
@@ -226,3 +384,57 @@ export async function sendInvoiceEmail(
     return { success: false, message: `Error: ${String(err)}. Pastikan Edge Function "send-invoice-email" sudah di-deploy di Supabase.` };
   }
 }
+FILE_EOF
+
+echo -e "${GREEN}✅ ${EMAIL_SERVICE} diperbarui (panggil Edge Function)${NC}"
+
+# ── 3. Patch InvoiceDetail.tsx pakai sed ──
+if [ -f "$INVOICE_DETAIL" ]; then
+  if sed --version >/dev/null 2>&1; then
+    SED_INPLACE=(-i)
+  else
+    SED_INPLACE=(-i '')
+  fi
+
+  sed "${SED_INPLACE[@]}" \
+    -e "s/Setup Resend API key dulu di \.env (VITE_RESEND_API_KEY)/Setup Supabase Edge Function dulu (lihat panduan)/g" \
+    -e "s/Setup Brevo API key dulu di \.env (VITE_BREVO_API_KEY)/Setup Supabase Edge Function dulu (lihat panduan)/g" \
+    "$INVOICE_DETAIL"
+
+  echo -e "${GREEN}✅ ${INVOICE_DETAIL} diperbarui (tooltip)${NC}"
+  echo -e "${YELLOW}   Catatan: notice box panjang (soal cara setup) mungkin masih${NC}"
+  echo -e "${YELLOW}   menyebut provider lama — ini cuma teks UI, tidak mempengaruhi fungsi.${NC}"
+else
+  echo -e "${YELLOW}⚠️  ${INVOICE_DETAIL} tidak ditemukan, skip.${NC}"
+fi
+
+echo ""
+echo -e "${BLUE}═══════════════════════════════════════════════${NC}"
+echo -e "${GREEN}  LANGKAH DEPLOY EDGE FUNCTION (manual, ~5 menit)${NC}"
+echo -e "${BLUE}═══════════════════════════════════════════════${NC}"
+echo -e "  1. Buka ${YELLOW}dashboard.supabase.com${NC} → project kamu"
+echo -e "  2. Sidebar kiri → ${YELLOW}Edge Functions${NC}"
+echo -e "  3. Klik ${YELLOW}Deploy a new function${NC} → pilih ${YELLOW}Via Editor${NC}"
+echo -e "  4. Nama function: ${YELLOW}send-invoice-email${NC}"
+echo -e "  5. Hapus kode default, copy-paste seluruh isi file:"
+echo -e "     ${YELLOW}${EDGE_FN_FILE}${NC}"
+echo -e "  6. Klik ${YELLOW}Deploy${NC}"
+echo -e "  7. Buka tab ${YELLOW}Secrets${NC} di halaman function tsb"
+echo -e "  8. Tambahkan secret:"
+echo -e "     ${YELLOW}Key:${NC}   RESEND_API_KEY"
+echo -e "     ${YELLOW}Value:${NC} re_xxxxxxxxxxxx  (API key Resend kamu)"
+echo ""
+echo -e "${BLUE}═══════════════════════════════════════════════${NC}"
+echo -e "${GREEN}  Setelah deploy selesai:${NC}"
+echo -e "${BLUE}═══════════════════════════════════════════════${NC}"
+echo -e "  npm run dev"
+echo -e "  → Buka invoice → klik Kirim Email → cek inbox klien"
+echo ""
+echo -e "${YELLOW}Kalau sudah OK, hapus file backup:${NC}"
+echo -e "  rm ${EMAIL_SERVICE}.bak ${INVOICE_DETAIL}.bak"
+echo ""
+echo -e "${BLUE}Kalau mau commit ke GitHub:${NC}"
+echo -e "  git add supabase/ src/utils/emailService.ts src/pages/InvoiceDetail.tsx"
+echo -e "  git commit -m \"Add Supabase Edge Function relay for Resend email (fix CORS)\""
+echo -e "  git push"
+echo ""

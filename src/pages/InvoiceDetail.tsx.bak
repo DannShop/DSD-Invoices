@@ -118,7 +118,7 @@ export default function InvoiceDetail({ invoiceId, navigate }: InvoiceDetailProp
             onClick={handleSendEmail}
             disabled={isSendingEmail || !emailConfigured || !hasClientEmail}
             title={
-              !emailConfigured ? 'Setup Supabase Edge Function dulu (lihat panduan)' :
+              !emailConfigured ? 'Setup Resend API key dulu di .env (VITE_RESEND_API_KEY)' :
               !hasClientEmail  ? 'Email klien belum diisi' : 'Kirim invoice ke email klien'
             }
             className="flex items-center gap-2 px-4 py-2 rounded-apple text-sm font-semibold transition-all press-effect
